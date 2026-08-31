@@ -39,7 +39,9 @@ function initApp() {
   }
   carregarCidades();
 
-  /* ---- 2. ATUALIZA O CONTADOR DINÂMICO DE FUNDADORES ---- */
+  /* ---- 2. ATUALIZA O CONTADOR DINÂMICO DE FUNDADORES (+10) ---- */
+  const COUNT_OFFSET = 10;
+
   async function atualizarContador() {
     try {
       let count = null;
@@ -75,29 +77,18 @@ function initApp() {
       }
 
       if (typeof count === 'number') {
+        const displayCount = count + COUNT_OFFSET;
         const countEl = document.getElementById('founder-count');
         const titleEl = document.getElementById('founder-title');
         const descEl = document.getElementById('founder-desc');
 
         if (titleEl) {
-          if (count === 0) {
-            titleEl.innerHTML = 'Seja o <span class="count" id="founder-count">1º</span> fundador da sua região.';
-            if (descEl) {
-              descEl.textContent = 'Cadastre seu negócio agora e garanta o selo exclusivo de fundador — acesso prioritário no lançamento e condições especiais de parceiro.';
-            }
-          } else if (count === 1) {
-            titleEl.innerHTML = 'Já somos <span class="count" id="founder-count">1</span>. Falta você.';
-            if (descEl) {
-              descEl.textContent = 'O primeiro negócio parceiro já garantiu o selo de fundador. Seja o próximo a garantir acesso prioritário e condições especiais.';
-            }
-          } else {
-            titleEl.innerHTML = `Já somos <span class="count" id="founder-count">${count}</span>. Falta você.`;
-            if (descEl) {
-              descEl.textContent = 'As primeiras empresas da região já garantiram o selo de fundador — acesso prioritário no lançamento e condições especiais.';
-            }
+          titleEl.innerHTML = `Já somos <span class="count" id="founder-count">${displayCount}</span>. Falta você.`;
+          if (descEl) {
+            descEl.textContent = 'As primeiras empresas da região já garantiram o selo de fundador — acesso prioritário no lançamento e condições especiais.';
           }
         } else if (countEl) {
-          countEl.textContent = count;
+          countEl.textContent = displayCount;
         }
       }
     } catch (e) {
@@ -219,8 +210,7 @@ function initApp() {
         }
 
         const insertedData = await res.json();
-        const lead = Array.isArray(insertedData) ? insertedData[0] : insertedData;
-        const founderNum = lead && lead.founder_number ? lead.founder_number : 1;
+        const founderNum = (lead && lead.founder_number ? lead.founder_number : 1) + COUNT_OFFSET;
         const founderFormatted = '#' + String(founderNum).padStart(2, '0');
 
         if (submitBtn) {
