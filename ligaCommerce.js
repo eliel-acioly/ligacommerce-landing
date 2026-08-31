@@ -63,10 +63,64 @@ function initApp() {
   }
   carregarCidades();
 
-  /* ---- 2. RENDERIZA OS CÍRCULOS DE AVATARES DOS FUNDADORES REAIS ---- */
+  /* ---- 2. RENDERIZA OS CÍRCULOS DE AVATARES E MODAL DE ZOOM ---- */
+  function abrirModalEmpresa(f) {
+    const modalBackdrop = document.getElementById('founder-modal-backdrop');
+    const badgeEl = document.getElementById('modal-founder-badge');
+    const logoWrapEl = document.getElementById('modal-logo-wrap');
+    const nameEl = document.getElementById('modal-founder-name');
+    const catEl = document.getElementById('modal-founder-cat');
+    const cityEl = document.getElementById('modal-founder-city');
+    const logo = getFounderLogo(f.business_name, f.founder_number);
+    const initials = getInitials(f.business_name);
+    const formattedNum = '#' + String(f.founder_number).padStart(2, '0');
+
+    if (badgeEl) badgeEl.textContent = `🏆 MEMBRO FUNDADOR OFICIAL ${formattedNum}`;
+    if (nameEl) nameEl.textContent = f.business_name;
+    if (catEl) catEl.textContent = f.category || 'Comércio & Serviços';
+    if (cityEl) cityEl.textContent = `${f.primary_city || 'Arapiraca'} - AL`;
+
+    if (logoWrapEl) {
+      if (logo) {
+        logoWrapEl.innerHTML = `<img src="${logo}" alt="${f.business_name}">`;
+      } else {
+        const bg = AVATAR_COLORS[(f.founder_number - 1) % AVATAR_COLORS.length] || AVATAR_COLORS[0];
+        logoWrapEl.innerHTML = `<div class="modal-initials" style="background: ${bg}; -webkit-background-clip: text; -webkit-text-fill-color: transparent;">${initials}</div>`;
+      }
+    }
+
+    if (modalBackdrop) {
+      modalBackdrop.classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+  }
+
+  function fecharModalEmpresa() {
+    const modalBackdrop = document.getElementById('founder-modal-backdrop');
+    if (modalBackdrop) {
+      modalBackdrop.classList.remove('active');
+      document.body.style.overflow = '';
+    }
+  }
+
+  // Eventos de fechamento do modal
+  const modalCloseBtn = document.getElementById('founder-modal-close');
+  if (modalCloseBtn) modalCloseBtn.addEventListener('click', fecharModalEmpresa);
+
+  const modalBackdrop = document.getElementById('founder-modal-backdrop');
+  if (modalBackdrop) {
+    modalBackdrop.addEventListener('click', (e) => {
+      if (e.target === modalBackdrop) fecharModalEmpresa();
+    });
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') fecharModalEmpresa();
+  });
+
   async function renderizarAvatares() {
     try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/founder_leads?select=business_name,category,primary_city,founder_number&order=created_at.asc&limit=8`, {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/founder_leads?select=business_name,category,primary_city,founder_number&order=created_at.asc&limit=12`, {
         method: 'GET',
         headers: API_HEADERS
       });
@@ -82,25 +136,48 @@ function initApp() {
           const initials = getInitials(f.business_name);
           const bg = AVATAR_COLORS[idx % AVATAR_COLORS.length];
           const logo = getFounderLogo(f.business_name, f.founder_number);
-          const title = `${f.business_name} (${f.primary_city || 'Arapiraca'}) · Fundador #${f.founder_number}`;
+          const title = `Clique para ver: ${f.business_name} (${f.primary_city || 'Arapiraca'}) · Fundador #${f.founder_number}`;
           
           if (logo) {
-            html += `<div class="avatar-circle has-img" title="${title}">
+            html += `<div class="avatar-circle has-img" data-index="${idx}" title="${title}">
               <img src="${logo}" alt="${f.business_name}" onerror="this.parentElement.className='avatar-circle'; this.parentElement.style.background='${bg}'; this.parentElement.textContent='${initials}';">
             </div>`;
           } else {
-            html += `<div class="avatar-circle" style="background: ${bg};" title="${title}">${initials}</div>`;
+            html += `<div class="avatar-circle" data-index="${idx}" style="background: ${bg};" title="${title}">${initials}</div>`;
           }
         });
       }
 
       // Slot para convidar o próximo visitante a ser membro fundador
-      html += `<div class="avatar-circle add-slot" title="Garanta a sua vaga e seja o próximo fundador!">Você</div>`;
+      html += `<div class="avatar-circle add-slot" title="Clique para garantir sua vaga e ser o próximo fundador!">Você</div>`;
       stackEl.innerHTML = html;
+
+      // Adiciona clique nos círculos para abrir o modal ampliado
+      const circles = stackEl.querySelectorAll('.avatar-circle[data-index]');
+      circles.forEach((circle) => {
+        circle.addEventListener('click', () => {
+          const idx = parseInt(circle.getAttribute('data-index'), 10);
+          const f = founders[idx];
+          if (f) abrirModalEmpresa(f);
+        });
+      });
+
+      // Slot Você rola suavemente até o formulário
+      const addSlot = stackEl.querySelector('.avatar-circle.add-slot');
+      if (addSlot) {
+        addSlot.addEventListener('click', () => {
+          const formWrap = document.getElementById('form-wrap');
+          if (formWrap) {
+            formWrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            const nomeInput = document.getElementById('nome');
+            if (nomeInput) setTimeout(() => nomeInput.focus(), 400);
+          }
+        });
+      }
 
       if (captionEl) {
         if (founders && founders.length > 0) {
-          captionEl.innerHTML = `<span class="live-dot"></span> <strong>${founders.length}</strong> ${founders.length === 1 ? 'empresa pioneira cadastrada' : 'empresas pioneiras cadastradas'}`;
+          captionEl.innerHTML = `<span class="live-dot"></span> <strong>${founders.length}</strong> ${founders.length === 1 ? 'empresa pioneira cadastrada (clique para ver)' : 'empresas pioneiras cadastradas (clique para ver)'}`;
         } else {
           captionEl.innerHTML = `<span class="live-dot"></span> Inscrições abertas para fundadores`;
         }
