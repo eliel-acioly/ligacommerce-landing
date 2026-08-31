@@ -28,6 +28,14 @@ function getInitials(name) {
   return (words[0][0] + words[1][0]).toUpperCase();
 }
 
+function getFounderLogo(businessName, founderNumber) {
+  const b = (businessName || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+  if (b.includes('sao carlos') || founderNumber === 1) return 'img/SaoCarlos.webp';
+  if (b.includes('uau') || b.includes('aroma') || founderNumber === 2) return 'img/UAUaromas.webp';
+  if (b.includes('cleiton') || b.includes('pintura automotiva') || founderNumber === 3) return 'img/CleitonEduardo.webp';
+  return null;
+}
+
 function initApp() {
   /* ---- 1. CARREGA AS CIDADES ATIVAS NO SELECT ---- */
   const cidadeSelect = document.getElementById('cidade');
@@ -73,8 +81,16 @@ function initApp() {
         founders.forEach((f, idx) => {
           const initials = getInitials(f.business_name);
           const bg = AVATAR_COLORS[idx % AVATAR_COLORS.length];
+          const logo = getFounderLogo(f.business_name, f.founder_number);
           const title = `${f.business_name} (${f.primary_city || 'Arapiraca'}) · Fundador #${f.founder_number}`;
-          html += `<div class="avatar-circle" style="background: ${bg};" title="${title}">${initials}</div>`;
+          
+          if (logo) {
+            html += `<div class="avatar-circle has-img" title="${title}">
+              <img src="${logo}" alt="${f.business_name}" onerror="this.parentElement.className='avatar-circle'; this.parentElement.style.background='${bg}'; this.parentElement.textContent='${initials}';">
+            </div>`;
+          } else {
+            html += `<div class="avatar-circle" style="background: ${bg};" title="${title}">${initials}</div>`;
+          }
         });
       }
 

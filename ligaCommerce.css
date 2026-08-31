@@ -580,8 +580,8 @@ html {
 }
 
 .avatar-circle {
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   border: 3px solid #fdf7e8;
   display: inline-flex;
@@ -597,6 +597,19 @@ html {
   transition: transform 0.2s ease, z-index 0.2s ease, box-shadow 0.2s ease;
   cursor: pointer;
   user-select: none;
+  overflow: hidden;
+  background: #0a1628;
+}
+
+.avatar-circle.has-img {
+  background: #ffffff;
+}
+
+.avatar-circle img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .avatar-circle:first-child {
