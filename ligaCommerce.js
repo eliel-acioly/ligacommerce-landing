@@ -83,17 +83,17 @@ function initApp() {
           if (count === 0) {
             titleEl.innerHTML = 'Seja o <span class="count" id="founder-count">1º</span> fundador da sua região.';
             if (descEl) {
-              descEl.textContent = 'Cadastre seu negócio agora e garanta o selo exclusivo de fundador — destaque permanente no perfil e cadastro sem mensalidade.';
+              descEl.textContent = 'Cadastre seu negócio agora e garanta o selo exclusivo de fundador — acesso prioritário no lançamento e condições especiais de parceiro.';
             }
           } else if (count === 1) {
             titleEl.innerHTML = 'Já somos <span class="count" id="founder-count">1</span>. Falta você.';
             if (descEl) {
-              descEl.textContent = 'O primeiro negócio parceiro já garantiu o selo de fundador. Seja o próximo a garantir destaque permanente e cadastro sem mensalidade.';
+              descEl.textContent = 'O primeiro negócio parceiro já garantiu o selo de fundador. Seja o próximo a garantir acesso prioritário e condições especiais.';
             }
           } else {
             titleEl.innerHTML = `Já somos <span class="count" id="founder-count">${count}</span>. Falta você.`;
             if (descEl) {
-              descEl.textContent = 'As primeiras empresas da região já garantiram o selo de fundador — destaque permanente no perfil e cadastro sem mensalidade.';
+              descEl.textContent = 'As primeiras empresas da região já garantiram o selo de fundador — acesso prioritário no lançamento e condições especiais.';
             }
           }
         } else if (countEl) {
@@ -220,20 +220,43 @@ function initApp() {
 
         const insertedData = await res.json();
         const lead = Array.isArray(insertedData) ? insertedData[0] : insertedData;
+        const founderNum = lead && lead.founder_number ? lead.founder_number : 1;
+        const founderFormatted = '#' + String(founderNum).padStart(2, '0');
 
         if (submitBtn) {
           submitBtn.classList.remove('loading');
           submitBtn.disabled = false;
         }
 
-        // Exibe tela de confirmação
-        const founderNumEl = document.getElementById('foundernum');
-        if (founderNumEl) {
-          founderNumEl.textContent = lead && lead.founder_number
-            ? 'fundador nº ' + lead.founder_number
-            : 'um dos nossos fundadores';
+        // Preenche o Cartão VIP Comemorativo
+        const respNameEl = document.getElementById('confirm-resp-name');
+        if (respNameEl) respNameEl.textContent = nomeResp;
+
+        const numEl = document.getElementById('confirm-num');
+        if (numEl) numEl.textContent = founderFormatted;
+
+        const businessNameEl = document.getElementById('confirm-business-name');
+        if (businessNameEl) businessNameEl.textContent = nomeNegocio;
+
+        const catEl = document.getElementById('confirm-cat');
+        if (catEl) catEl.textContent = categoria;
+
+        const cityEl = document.getElementById('confirm-city');
+        if (cityEl) cityEl.textContent = cidadePrincipal;
+
+        const whatsDisplayEl = document.getElementById('confirm-whats');
+        if (whatsDisplayEl) whatsDisplayEl.textContent = whatsEl.value;
+
+        // Configura o link de compartilhamento no WhatsApp
+        const shareWhatsBtn = document.getElementById('btn-share-whats');
+        if (shareWhatsBtn) {
+          const shareMsg = encodeURIComponent(
+            `Olá! Acabei de cadastrar ${nomeNegocio} como Membro Fundador (${founderFormatted}) da LigaCommerce em ${cidadePrincipal}! Garanta também o selo exclusivo do seu negócio no pré-lançamento: https://ligacommerce-landing.vercel.app/`
+          );
+          shareWhatsBtn.href = `https://api.whatsapp.com/send?text=${shareMsg}`;
         }
 
+        // Esconde o formulário e exibe a celebração
         const formWrap = document.getElementById('form-wrap');
         if (formWrap) formWrap.style.display = 'none';
         
