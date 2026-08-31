@@ -1,60 +1,76 @@
 /* =========================================================
-   CONFIGURAÇÃO DAS CHAVES
-   Substitua SUA_CHAVE_ANON_PUBLICA pela chave encontrada em:
-   Supabase > Project Settings > API > anon public
+   LIGACOMMERCE - CLIENTE DE BANCO DE DADOS & INTERAÇÃO (API NATIVA)
+   Comunicação direta via REST API PostgREST (Zero dependências externas)
    ========================================================= */
+
 const SUPABASE_URL = 'https://glibdygzmmddzlxhtrie.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_n-Ew0oNPlrzeUos1t9j59w_dI0WTYvj';
 
-const supabase = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+const API_HEADERS = {
+  'apikey': SUPABASE_ANON_KEY,
+  'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+  'Content-Type': 'application/json'
+};
 
-document.addEventListener('DOMContentLoaded', () => {
-  if (!supabase) {
-    console.error('SDK do Supabase não foi carregado.');
-    return;
-  }
-
+function initApp() {
   /* ---- 1. CARREGA AS CIDADES ATIVAS NO SELECT ---- */
   const cidadeSelect = document.getElementById('cidade');
   async function carregarCidades() {
     try {
-      const { data, error } = await supabase
-        .from('available_cities')
-        .select('name')
-        .eq('is_active', true)
-        .order('name');
-
-      if (!error && data && data.length > 0 && cidadeSelect) {
-        cidadeSelect.innerHTML = '<option value="" disabled selected>Selecione</option>';
-        data.forEach((item) => {
-          const opt = document.createElement('option');
-          opt.value = item.name;
-          opt.textContent = item.name;
-          cidadeSelect.appendChild(opt);
-        });
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/available_cities?is_active=eq.true&select=name&order=name.asc`, {
+        method: 'GET',
+        headers: API_HEADERS
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0 && cidadeSelect) {
+          cidadeSelect.innerHTML = '<option value="" disabled selected>Selecione</option>';
+          data.forEach((item) => {
+            const opt = document.createElement('option');
+            opt.value = item.name;
+            opt.textContent = item.name;
+            cidadeSelect.appendChild(opt);
+          });
+        }
       }
     } catch (e) {
-      console.error('Erro ao carregar cidades:', e);
+      console.warn('Usando cidades padrão:', e);
     }
   }
   carregarCidades();
 
-  /* ---- 2. ATUALIZA O CONTADOR REAL DE FUNDADORES ---- */
+  /* ---- 2. ATUALIZA O CONTADOR DINÂMICO DE FUNDADORES ---- */
   async function atualizarContador() {
     try {
       let count = null;
 
-      // 1. Tenta via RPC otimizada
-      const { data, error } = await supabase.rpc('get_founder_count');
-      if (!error && typeof data === 'number') {
-        count = data;
-      } else {
-        // 2. Fallback direto consultando a tabela
-        const { count: total, error: countErr } = await supabase
-          .from('founder_leads')
-          .select('*', { count: 'exact', head: true });
-        if (!countErr && typeof total === 'number') {
-          count = total;
+      // 1. Tenta via RPC otimizada get_founder_count
+      const rpcRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_founder_count`, {
+        method: 'POST',
+        headers: API_HEADERS,
+        body: JSON.stringify({})
+      });
+
+      if (rpcRes.ok) {
+        const data = await rpcRes.json();
+        if (typeof data === 'number') {
+          count = data;
+        }
+      }
+
+      // 2. Fallback de contagem direta se RPC falhar
+      if (count === null) {
+        const fallbackRes = await fetch(`${SUPABASE_URL}/rest/v1/founder_leads?select=id`, {
+          method: 'HEAD',
+          headers: {
+            ...API_HEADERS,
+            'Prefer': 'count=exact'
+          }
+        });
+        const contentRange = fallbackRes.headers.get('content-range');
+        if (contentRange) {
+          const total = parseInt(contentRange.split('/')[1], 10);
+          if (!isNaN(total)) count = total;
         }
       }
 
@@ -85,10 +101,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
     } catch (e) {
-      console.error('Erro ao buscar contador de fundadores:', e);
+      console.error('Erro ao atualizar contador de fundadores:', e);
     }
   }
+
   atualizarContador();
+  // Atualiza automaticamente a cada 20 segundos para manter todos sincronizados
+  setInterval(atualizarContador, 20000);
 
   /* ---- 3. MÁSCARA DE WHATSAPP ---- */
   const whatsEl = document.getElementById('whats');
@@ -105,7 +124,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  /* ---- 4. ENVIO DO FORMULÁRIO COM O ARRAY DE CIDADES ---- */
+  /* ---- 4. ENVIO DO FORMULÁRIO ---- */
   const form = document.getElementById('preform');
   const submitBtn = document.getElementById('submit-btn');
   const formAlert = document.getElementById('form-alert');
@@ -121,14 +140,12 @@ document.addEventListener('DOMContentLoaded', () => {
   fields.forEach((f) => {
     const el = document.getElementById(f.id);
     if (!el) return;
-    el.addEventListener('input', () => {
+    const clearInvalid = () => {
       const wrapEl = document.getElementById(f.wrap);
       if (wrapEl) wrapEl.classList.remove('invalid');
-    });
-    el.addEventListener('change', () => {
-      const wrapEl = document.getElementById(f.wrap);
-      if (wrapEl) wrapEl.classList.remove('invalid');
-    });
+    };
+    el.addEventListener('input', clearInvalid);
+    el.addEventListener('change', clearInvalid);
   });
 
   if (form) {
@@ -158,36 +175,51 @@ document.addEventListener('DOMContentLoaded', () => {
         valid = false;
       }
 
-      if (!valid) return;
+      if (!valid) {
+        const firstInvalid = document.querySelector('.field.invalid, .field-select.invalid');
+        if (firstInvalid) {
+          firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        return;
+      }
 
       const nomeNegocio = document.getElementById('nome').value.trim();
       const nomeResp = document.getElementById('resp').value.trim();
       const categoria = document.getElementById('cat').value;
-      const cidadePrincipal = document.getElementById('cidade').value;
+      const cidadePrincipal = document.getElementById('cidade').value || 'Arapiraca';
 
+      const originalBtnText = submitBtn ? submitBtn.innerHTML : '';
       if (submitBtn) {
         submitBtn.classList.add('loading');
         submitBtn.disabled = true;
       }
 
       try {
-        // Grava na tabela founder_leads com o array de cidades
-        const { data, error } = await supabase
-          .from('founder_leads')
-          .insert([
-            {
-              business_name: nomeNegocio,
-              responsible_name: nomeResp,
-              whatsapp: digits,
-              category: categoria,
-              primary_city: cidadePrincipal,
-              coverage_cities: [cidadePrincipal] // Array de cidades de atendimento
-            }
-          ])
-          .select('founder_number')
-          .single();
+        const payload = {
+          business_name: nomeNegocio,
+          responsible_name: nomeResp,
+          whatsapp: digits,
+          category: categoria,
+          primary_city: cidadePrincipal,
+          coverage_cities: [cidadePrincipal]
+        };
 
-        if (error) throw error;
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/founder_leads?select=id,founder_number`, {
+          method: 'POST',
+          headers: {
+            ...API_HEADERS,
+            'Prefer': 'return=representation'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+          const errData = await res.text();
+          throw new Error('Falha na resposta do servidor: ' + errData);
+        }
+
+        const insertedData = await res.json();
+        const lead = Array.isArray(insertedData) ? insertedData[0] : insertedData;
 
         if (submitBtn) {
           submitBtn.classList.remove('loading');
@@ -197,24 +229,41 @@ document.addEventListener('DOMContentLoaded', () => {
         // Exibe tela de confirmação
         const founderNumEl = document.getElementById('foundernum');
         if (founderNumEl) {
-          founderNumEl.textContent = data && data.founder_number
-            ? 'fundador nº ' + data.founder_number
+          founderNumEl.textContent = lead && lead.founder_number
+            ? 'fundador nº ' + lead.founder_number
             : 'um dos nossos fundadores';
         }
+
         const formWrap = document.getElementById('form-wrap');
         if (formWrap) formWrap.style.display = 'none';
+        
         const confirmEl = document.getElementById('confirm');
-        if (confirmEl) confirmEl.style.display = 'block';
+        if (confirmEl) {
+          confirmEl.style.display = 'block';
+          confirmEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
 
-        atualizarContador();
+        // Atualiza imediatamente a contagem na tela
+        await atualizarContador();
       } catch (err) {
         console.error('Erro ao registrar:', err);
         if (submitBtn) {
           submitBtn.classList.remove('loading');
           submitBtn.disabled = false;
+          submitBtn.innerHTML = originalBtnText;
         }
-        if (formAlert) formAlert.classList.add('show');
+        if (formAlert) {
+          formAlert.classList.add('show');
+          formAlert.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
       }
     });
   }
-});
+}
+
+// Inicialização segura garantindo execução mesmo se o DOM já tiver carregado
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
+}
