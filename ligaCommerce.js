@@ -334,6 +334,11 @@ function initApp() {
           submitBtn.innerHTML = originalBtnText;
         }
         if (formAlert) {
+          if (err.message && (err.message.includes('duplicate') || err.message.includes('founder_leads_whatsapp_key') || err.message.includes('23505'))) {
+            formAlert.textContent = 'Este número de WhatsApp já possui uma vaga de fundador garantida!';
+          } else {
+            formAlert.textContent = 'Não conseguimos enviar agora. Tenta de novo em instantes.';
+          }
           formAlert.classList.add('show');
           formAlert.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
