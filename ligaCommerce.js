@@ -12,6 +12,22 @@ const API_HEADERS = {
   'Content-Type': 'application/json'
 };
 
+const AVATAR_COLORS = [
+  'linear-gradient(135deg, #0a1628, #1c355e)',
+  'linear-gradient(135deg, #b5860a, #d49e0c)',
+  'linear-gradient(135deg, #0f766e, #14b8a6)',
+  'linear-gradient(135deg, #6d28d9, #8b5cf6)',
+  'linear-gradient(135deg, #c2410c, #ea580c)',
+  'linear-gradient(135deg, #1e293b, #334155)'
+];
+
+function getInitials(name) {
+  if (!name) return 'LC';
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return (words[0][0] + words[1][0]).toUpperCase();
+}
+
 function initApp() {
   /* ---- 1. CARREGA AS CIDADES ATIVAS NO SELECT ---- */
   const cidadeSelect = document.getElementById('cidade');
@@ -39,9 +55,46 @@ function initApp() {
   }
   carregarCidades();
 
-  /* ---- 2. ATUALIZA O CONTADOR DINÂMICO DE FUNDADORES (+10) ---- */
-  const COUNT_OFFSET = 10;
+  /* ---- 2. RENDERIZA OS CÍRCULOS DE AVATARES DOS FUNDADORES REAIS ---- */
+  async function renderizarAvatares() {
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/founder_leads?select=business_name,category,primary_city,founder_number&order=created_at.asc&limit=8`, {
+        method: 'GET',
+        headers: API_HEADERS
+      });
+      if (!res.ok) return;
+      const founders = await res.json();
+      const stackEl = document.getElementById('founder-avatars-stack');
+      const captionEl = document.getElementById('founder-avatars-caption');
+      if (!stackEl) return;
 
+      let html = '';
+      if (Array.isArray(founders) && founders.length > 0) {
+        founders.forEach((f, idx) => {
+          const initials = getInitials(f.business_name);
+          const bg = AVATAR_COLORS[idx % AVATAR_COLORS.length];
+          const title = `${f.business_name} (${f.primary_city || 'Arapiraca'}) · Fundador #${f.founder_number}`;
+          html += `<div class="avatar-circle" style="background: ${bg};" title="${title}">${initials}</div>`;
+        });
+      }
+
+      // Slot para convidar o próximo visitante a ser membro fundador
+      html += `<div class="avatar-circle add-slot" title="Garanta a sua vaga e seja o próximo fundador!">Você</div>`;
+      stackEl.innerHTML = html;
+
+      if (captionEl) {
+        if (founders && founders.length > 0) {
+          captionEl.innerHTML = `<span class="live-dot"></span> <strong>${founders.length}</strong> ${founders.length === 1 ? 'empresa pioneira cadastrada' : 'empresas pioneiras cadastradas'}`;
+        } else {
+          captionEl.innerHTML = `<span class="live-dot"></span> Inscrições abertas para fundadores`;
+        }
+      }
+    } catch (e) {
+      console.warn('Erro ao renderizar avatares:', e);
+    }
+  }
+
+  /* ---- 3. ATUALIZA O CONTADOR DINÂMICO E REAL DE FUNDADORES ---- */
   async function atualizarContador() {
     try {
       let count = null;
@@ -77,20 +130,34 @@ function initApp() {
       }
 
       if (typeof count === 'number') {
-        const displayCount = count + COUNT_OFFSET;
         const countEl = document.getElementById('founder-count');
         const titleEl = document.getElementById('founder-title');
         const descEl = document.getElementById('founder-desc');
 
         if (titleEl) {
-          titleEl.innerHTML = `Já somos <span class="count" id="founder-count">${displayCount}</span>. Falta você.`;
-          if (descEl) {
-            descEl.textContent = 'As primeiras empresas da região já garantiram o selo de fundador — acesso prioritário no lançamento e condições especiais.';
+          if (count === 0) {
+            titleEl.innerHTML = 'Seja o <span class="count" id="founder-count">1º</span> fundador da sua região.';
+            if (descEl) {
+              descEl.textContent = 'Cadastre seu negócio agora e garanta o selo exclusivo de fundador — acesso prioritário no lançamento e condições especiais de parceiro.';
+            }
+          } else if (count === 1) {
+            titleEl.innerHTML = 'Já somos <span class="count" id="founder-count">1</span>. Falta você.';
+            if (descEl) {
+              descEl.textContent = 'O primeiro negócio parceiro já garantiu o selo de fundador. Seja o próximo a garantir acesso prioritário e condições especiais.';
+            }
+          } else {
+            titleEl.innerHTML = `Já somos <span class="count" id="founder-count">${count}</span>. Falta você.`;
+            if (descEl) {
+              descEl.textContent = 'As primeiras empresas da região já garantiram o selo de fundador — acesso prioritário no lançamento e condições especiais de parceiro.';
+            }
           }
         } else if (countEl) {
-          countEl.textContent = displayCount;
+          countEl.textContent = count;
         }
       }
+
+      // Atualiza também os círculos com iniciais
+      renderizarAvatares();
     } catch (e) {
       console.error('Erro ao atualizar contador de fundadores:', e);
     }
@@ -100,7 +167,7 @@ function initApp() {
   // Atualiza automaticamente a cada 20 segundos para manter todos sincronizados
   setInterval(atualizarContador, 20000);
 
-  /* ---- 3. MÁSCARA DE WHATSAPP ---- */
+  /* ---- 4. MÁSCARA DE WHATSAPP ---- */
   const whatsEl = document.getElementById('whats');
   if (whatsEl) {
     whatsEl.addEventListener('input', () => {
@@ -115,7 +182,7 @@ function initApp() {
     });
   }
 
-  /* ---- 4. ENVIO DO FORMULÁRIO ---- */
+  /* ---- 5. ENVIO DO FORMULÁRIO ---- */
   const form = document.getElementById('preform');
   const submitBtn = document.getElementById('submit-btn');
   const formAlert = document.getElementById('form-alert');
@@ -210,7 +277,8 @@ function initApp() {
         }
 
         const insertedData = await res.json();
-        const founderNum = (lead && lead.founder_number ? lead.founder_number : 1) + COUNT_OFFSET;
+        const lead = Array.isArray(insertedData) ? insertedData[0] : insertedData;
+        const founderNum = lead && lead.founder_number ? lead.founder_number : 1;
         const founderFormatted = '#' + String(founderNum).padStart(2, '0');
 
         if (submitBtn) {
@@ -256,7 +324,7 @@ function initApp() {
           confirmEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
-        // Atualiza imediatamente a contagem na tela
+        // Atualiza imediatamente a contagem e os avatares na tela
         await atualizarContador();
       } catch (err) {
         console.error('Erro ao registrar:', err);
