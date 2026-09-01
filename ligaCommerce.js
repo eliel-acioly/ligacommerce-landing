@@ -80,6 +80,16 @@ function initApp() {
     if (catEl) catEl.textContent = f.category || 'Comércio & Serviços';
     if (cityEl) cityEl.textContent = `${f.primary_city || 'Arapiraca'} - AL`;
 
+    const neighborhoodEl = document.getElementById('modal-founder-neighborhood');
+    if (neighborhoodEl) {
+      if (f.neighborhood) {
+        neighborhoodEl.textContent = `Bairro: ${f.neighborhood}`;
+        neighborhoodEl.style.display = 'inline-block';
+      } else {
+        neighborhoodEl.style.display = 'none';
+      }
+    }
+
     if (logoWrapEl) {
       if (logo) {
         logoWrapEl.innerHTML = `<img src="${logo}" alt="${f.business_name}">`;
@@ -120,7 +130,7 @@ function initApp() {
 
   async function renderizarAvatares() {
     try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/founder_leads?select=business_name,category,primary_city,founder_number&order=created_at.asc&limit=12`, {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/founder_leads?select=business_name,category,primary_city,neighborhood,founder_number&order=created_at.asc&limit=12`, {
         method: 'GET',
         headers: API_HEADERS
       });
@@ -136,7 +146,8 @@ function initApp() {
           const initials = getInitials(f.business_name);
           const bg = AVATAR_COLORS[idx % AVATAR_COLORS.length];
           const logo = getFounderLogo(f.business_name, f.founder_number);
-          const title = `Clique para ver: ${f.business_name} (${f.primary_city || 'Arapiraca'}) · Fundador #${f.founder_number}`;
+          const localDesc = f.neighborhood ? `${f.primary_city || 'Arapiraca'} · ${f.neighborhood}` : (f.primary_city || 'Arapiraca');
+          const title = `Clique para ver: ${f.business_name} (${localDesc}) · Fundador #${f.founder_number}`;
           
           if (logo) {
             html += `<div class="avatar-circle has-img" data-index="${idx}" title="${title}">
@@ -285,7 +296,8 @@ function initApp() {
     { id: 'resp', wrap: 'f-resp' },
     { id: 'whats', wrap: 'f-whats' },
     { id: 'cat', wrap: 'f-cat' },
-    { id: 'cidade', wrap: 'f-cidade' }
+    { id: 'cidade', wrap: 'f-cidade' },
+    { id: 'bairro', wrap: 'f-bairro' }
   ];
 
   fields.forEach((f) => {
@@ -338,6 +350,7 @@ function initApp() {
       const nomeResp = document.getElementById('resp').value.trim();
       const categoria = document.getElementById('cat').value;
       const cidadePrincipal = document.getElementById('cidade').value || 'Arapiraca';
+      const bairro = document.getElementById('bairro').value.trim();
 
       const originalBtnText = submitBtn ? submitBtn.innerHTML : '';
       if (submitBtn) {
@@ -352,6 +365,7 @@ function initApp() {
           whatsapp: digits,
           category: categoria,
           primary_city: cidadePrincipal,
+          neighborhood: bairro,
           coverage_cities: [cidadePrincipal]
         };
 
@@ -393,7 +407,7 @@ function initApp() {
         if (catEl) catEl.textContent = categoria;
 
         const cityEl = document.getElementById('confirm-city');
-        if (cityEl) cityEl.textContent = cidadePrincipal;
+        if (cityEl) cityEl.textContent = bairro ? `${cidadePrincipal} (${bairro})` : cidadePrincipal;
 
         const whatsDisplayEl = document.getElementById('confirm-whats');
         if (whatsDisplayEl) whatsDisplayEl.textContent = whatsEl.value;
@@ -401,8 +415,9 @@ function initApp() {
         // Configura o link de compartilhamento no WhatsApp
         const shareWhatsBtn = document.getElementById('btn-share-whats');
         if (shareWhatsBtn) {
+          const localStr = bairro ? `${cidadePrincipal} (${bairro})` : cidadePrincipal;
           const shareMsg = encodeURIComponent(
-            `Olá! Acabei de cadastrar ${nomeNegocio} como Membro Fundador (${founderFormatted}) da LigaCommerce em ${cidadePrincipal}! Garanta também o selo exclusivo do seu negócio no pré-lançamento: https://ligacommerce-landing.vercel.app/`
+            `Olá! Acabei de cadastrar ${nomeNegocio} como Membro Fundador (${founderFormatted}) da LigaCommerce em ${localStr}! Garanta também o selo exclusivo do seu negócio no pré-lançamento: https://ligacommerce-landing.vercel.app/`
           );
           shareWhatsBtn.href = `https://api.whatsapp.com/send?text=${shareMsg}`;
         }

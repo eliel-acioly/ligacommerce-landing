@@ -151,6 +151,12 @@
             </div>
             <div class="error-msg">Selecione sua cidade.</div>
           </div>
+
+          <div class="field" id="f-bairro">
+            <input type="text" id="bairro" placeholder=" ">
+            <label for="bairro">Bairro</label>
+            <div class="error-msg">Digite o bairro do seu negócio.</div>
+          </div>
         </div>
 
         <button type="submit" class="submit-btn" id="submit-btn">
@@ -170,22 +176,27 @@
       <p class="confirm-sub">Sua vaga no <strong>Grupo Fundador</strong> da LigaCommerce está garantida com sucesso.</p>
 
       <div class="founder-card-vip">
-        <div class="vip-top">
-          <div class="vip-seal">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>
-            <span>MEMBRO FUNDADOR</span>
-          </div>
-          <div class="vip-num" id="confirm-num">#01</div>
+        <div class="card-vip-top">
+          <div class="card-vip-brand">Liga<span>Commerce</span></div>
+          <div class="card-vip-badge">MEMBRO FUNDADOR</div>
         </div>
-        <div class="vip-body">
-          <div class="vip-business" id="confirm-business-name">Nome do Negócio</div>
-          <div class="vip-meta">
-            <span id="confirm-cat">Categoria</span> · <span id="confirm-city">Cidade</span>
+        <div class="card-vip-body">
+          <div class="card-vip-num" id="confirm-num">#01</div>
+          <div class="card-vip-name" id="confirm-business-name">Seu Negócio</div>
+          <div class="card-vip-details">
+            <div class="card-vip-detail">
+              <span class="lbl">CATEGORIA</span>
+              <span class="val" id="confirm-cat">Comércio</span>
+            </div>
+            <div class="card-vip-detail">
+              <span class="lbl">CIDADE & BAIRRO</span>
+              <span class="val" id="confirm-city">Arapiraca - AL</span>
+            </div>
           </div>
         </div>
-        <div class="vip-footer">
-          <div class="vip-tag">⭐ Selo de Fundador Ativo</div>
-          <div class="vip-tag">🚀 Acesso Prioritário</div>
+        <div class="card-vip-footer">
+          <div class="card-vip-tag">⭐ Selo de Fundador Ativo</div>
+          <div class="card-vip-tag">🚀 Acesso Prioritário</div>
         </div>
       </div>
 
@@ -222,6 +233,7 @@
       <div class="founder-modal-meta">
         <span class="meta-tag" id="modal-founder-cat">Categoria</span>
         <span class="meta-tag" id="modal-founder-city">Cidade</span>
+        <span class="meta-tag" id="modal-founder-neighborhood">Bairro</span>
       </div>
       <p class="founder-modal-sub" id="modal-founder-sub">Empresa parceira pioneira da LigaCommerce.</p>
     </div>
@@ -229,6 +241,6 @@
 
 </div>
 <!-- SCRIPT DE CONEXÃO E ENVIO NATIVO -->
-<script src="ligaCommerce.js?v=2.6"></script>
+<script src="ligaCommerce.js?v=2.7"></script>
 </body>
 </html>

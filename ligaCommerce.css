@@ -734,10 +734,6 @@ html {
     grid-template-columns: repeat(2, 1fr);
     column-gap: 16px;
   }
-
-  #f-cidade {
-    grid-column: span 2;
-  }
 }
 
 /* text/tel fields with floating label */
