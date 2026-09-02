@@ -207,7 +207,9 @@ function initApp() {
     if (e.key === 'Escape') fecharModalEmpresa();
   });
 
-  async function renderizarAvatares() {
+  const TOTAL_FOUNDER_SPOTS = 20;
+
+  async function renderizarAvatares(totalCount) {
     try {
       const res = await fetch(`${SUPABASE_URL}/rest/v1/founder_leads?select=business_name,category,primary_city,neighborhood,founder_number&order=created_at.asc&limit=12`, {
         method: 'GET',
@@ -266,11 +268,8 @@ function initApp() {
       }
 
       if (captionEl) {
-        if (founders && founders.length > 0) {
-          captionEl.innerHTML = `<span class="live-dot"></span> <strong>${founders.length}</strong> ${founders.length === 1 ? 'empresa pioneira cadastrada (clique para ver)' : 'empresas pioneiras cadastradas (clique para ver)'}`;
-        } else {
-          captionEl.innerHTML = `<span class="live-dot"></span> Inscrições abertas para fundadores`;
-        }
+        const displayCount = (typeof totalCount === 'number') ? totalCount : (founders && founders.length > 0 ? founders.length : 5);
+        captionEl.innerHTML = `<span class="live-dot"></span> <strong>${displayCount} de ${TOTAL_FOUNDER_SPOTS}</strong> vagas de fundador preenchidas`;
       }
     } catch (e) {
       console.warn('Erro ao renderizar avatares:', e);
@@ -333,8 +332,8 @@ function initApp() {
         }
       }
 
-      // Atualiza também os círculos com iniciais
-      renderizarAvatares();
+      // Atualiza também os círculos com iniciais e o texto de escassez
+      renderizarAvatares(count);
     } catch (e) {
       console.error('Erro ao atualizar contador de fundadores:', e);
     }
