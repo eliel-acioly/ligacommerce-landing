@@ -12,6 +12,85 @@ const API_HEADERS = {
   'Content-Type': 'application/json'
 };
 
+/* =========================================================
+   SISTEMA DE ATRIBUIÇÃO AUTOMÁTICA DE PARCEIROS E CAMPANHAS
+   Persistência em Cookie (60 dias) e LocalStorage
+   ========================================================= */
+const REF_STORAGE_KEY = 'lc_partner_ref';
+const UTM_STORAGE_KEY = 'lc_utm_data';
+const COOKIE_EXPIRY_DAYS = 60;
+
+function setCookie(name, value, days) {
+  try {
+    const d = new Date();
+    d.setTime(d.getTime() + (days * 24 * 60 * 60 * 1000));
+    document.cookie = `${name}=${encodeURIComponent(value)};expires=${d.toUTCString()};path=/;SameSite=Lax`;
+  } catch (e) {
+    console.warn('Erro ao gravar cookie:', e);
+  }
+}
+
+function getCookie(name) {
+  try {
+    const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+    return match ? decodeURIComponent(match[2]) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function initReferralTracking() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    
+    // Captura o código do parceiro via URL (?ref=, ?r=, ?partner=, ?parceiro=, ?p=)
+    const refParam = params.get('ref') || params.get('r') || params.get('partner') || params.get('parceiro') || params.get('p');
+    if (refParam && refParam.trim()) {
+      const cleanCode = refParam.trim().toUpperCase();
+      localStorage.setItem(REF_STORAGE_KEY, cleanCode);
+      setCookie(REF_STORAGE_KEY, cleanCode, COOKIE_EXPIRY_DAYS);
+    }
+
+    // Captura parâmetros UTM
+    const utmSource = params.get('utm_source');
+    const utmMedium = params.get('utm_medium');
+    const utmCampaign = params.get('utm_campaign');
+    if (utmSource || utmMedium || utmCampaign) {
+      const utmData = {
+        utm_source: utmSource ? utmSource.trim() : null,
+        utm_medium: utmMedium ? utmMedium.trim() : null,
+        utm_campaign: utmCampaign ? utmCampaign.trim() : null
+      };
+      localStorage.setItem(UTM_STORAGE_KEY, JSON.stringify(utmData));
+    }
+  } catch (e) {
+    console.warn('Erro ao processar tracking de indicação:', e);
+  }
+}
+
+function getActiveReferral() {
+  try {
+    const fromStorage = localStorage.getItem(REF_STORAGE_KEY);
+    const fromCookie = getCookie(REF_STORAGE_KEY);
+    return fromStorage || fromCookie || null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function getActiveUtms() {
+  try {
+    const data = localStorage.getItem(UTM_STORAGE_KEY);
+    return data ? JSON.parse(data) : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+// Inicializa a captura de parâmetros imediatamente
+initReferralTracking();
+
+
 const AVATAR_COLORS = [
   'linear-gradient(135deg, #0a1628, #1c355e)',
   'linear-gradient(135deg, #b5860a, #d49e0c)',
@@ -240,20 +319,14 @@ function initApp() {
 
         if (titleEl) {
           if (count === 0) {
-            titleEl.innerHTML = 'Seja o <span class="count" id="founder-count">1º</span> fundador da sua região.';
-            if (descEl) {
-              descEl.textContent = 'Cadastre seu negócio agora e garanta o selo exclusivo de fundador — acesso prioritário no lançamento e condições especiais de parceiro.';
-            }
+            titleEl.innerHTML = 'Os primeiros lugares do <span class="count">Clube de Fundadores</span> estão abertos.';
           } else if (count === 1) {
-            titleEl.innerHTML = 'Já somos <span class="count" id="founder-count">1</span>. Falta você.';
-            if (descEl) {
-              descEl.textContent = 'O primeiro negócio parceiro já garantiu o selo de fundador. Seja o próximo a garantir acesso prioritário e condições especiais.';
-            }
+            titleEl.innerHTML = 'O <span class="count" id="founder-count">1º</span> lugar já foi preenchido. Falta você.';
           } else {
-            titleEl.innerHTML = `Já somos <span class="count" id="founder-count">${count}</span>. Falta você.`;
-            if (descEl) {
-              descEl.textContent = 'As primeiras empresas da região já garantiram o selo de fundador — acesso prioritário no lançamento e condições especiais de parceiro.';
-            }
+            titleEl.innerHTML = `Os <span class="count" id="founder-count">${count}</span> primeiros lugares já foram preenchidos.`;
+          }
+          if (descEl) {
+            descEl.textContent = 'Garanta sua empresa entre as pioneiras da região com taxa zero de adesão, prioridade no lançamento e benefícios vitalícios de parceiro.';
           }
         } else if (countEl) {
           countEl.textContent = count;
@@ -359,6 +432,9 @@ function initApp() {
       }
 
       try {
+        const partnerCode = getActiveReferral();
+        const utms = getActiveUtms();
+
         const payload = {
           business_name: nomeNegocio,
           responsible_name: nomeResp,
@@ -366,7 +442,13 @@ function initApp() {
           category: categoria,
           primary_city: cidadePrincipal,
           neighborhood: bairro,
-          coverage_cities: [cidadePrincipal]
+          coverage_cities: [cidadePrincipal],
+          partner_code: partnerCode,
+          origin: 'LANDING_PAGE',
+          campaign: utms.utm_campaign || 'FUNDADORES-2026',
+          utm_source: utms.utm_source || null,
+          utm_medium: utms.utm_medium || null,
+          utm_campaign: utms.utm_campaign || null
         };
 
         const res = await fetch(`${SUPABASE_URL}/rest/v1/founder_leads?select=id,founder_number`, {
